@@ -1,0 +1,357 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Semana Santa de Córdoba - Simulador</title>
+
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #111;
+    font-family: Arial, sans-serif;
+  }
+
+  #estado {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 10;
+    color: white;
+    background: #171717dd;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  #ayuda {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    z-index: 10;
+    color: white;
+    background: #171717dd;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+</style>
+</head>
+
+<body>
+
+<div id="estado">Cargando el simulador...</div>
+<div id="ayuda">
+  RATÓN: girar la cámara y acercar/alejar<br>
+  W / S: avanzar y retroceder<br>
+  A / D: girar el paso
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+try {
+
+  const estado = document.getElementById("estado");
+
+  if (!window.THREE) {
+    throw new Error("No se ha podido cargar Three.js.");
+  }
+
+  if (!THREE.OrbitControls) {
+    throw new Error("No se han podido cargar los controles de cámara.");
+  }
+
+  // ESCENA
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x171c29);
+  scene.fog = new THREE.Fog(0x171c29, 35, 100);
+
+  // CÁMARA
+  const camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    300
+  );
+
+  camera.position.set(9, 7, 12);
+
+  // RENDERIZADOR
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.body.appendChild(renderer.domElement);
+
+  // CONTROLES
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 2, 0);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI / 2.05;
+  controls.minDistance = 3;
+  controls.maxDistance = 35;
+
+  // ILUMINACIÓN
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+
+  const luna = new THREE.DirectionalLight(0xffe4bd, 1.5);
+  luna.position.set(-8, 15, 8);
+  luna.castShadow = true;
+  scene.add(luna);
+
+  // SUELO
+  const suelo = new THREE.Mesh(
+    new THREE.PlaneGeometry(100, 100),
+    new THREE.MeshStandardMaterial({ color: 0x55545a })
+  );
+
+  suelo.rotation.x = -Math.PI / 2;
+  suelo.receiveShadow = true;
+  scene.add(suelo);
+
+  // CALLE
+  const calle = new THREE.Mesh(
+    new THREE.PlaneGeometry(9, 100),
+    new THREE.MeshStandardMaterial({ color: 0x29292e })
+  );
+
+  calle.rotation.x = -Math.PI / 2;
+  calle.position.y = 0.015;
+  scene.add(calle);
+
+  // EDIFICIOS
+  function edificio(x, z, ancho, alto, color) {
+    const grupo = new THREE.Group();
+
+    const cuerpo = new THREE.Mesh(
+      new THREE.BoxGeometry(ancho, alto, 5),
+      new THREE.MeshStandardMaterial({ color: color })
+    );
+
+    cuerpo.position.y = alto / 2;
+    cuerpo.castShadow = true;
+    grupo.add(cuerpo);
+
+    for (let y = 1.5; y < alto - 0.5; y += 2) {
+      for (let i = -ancho / 2 + 0.8; i < ancho / 2 - 0.4; i += 1.5) {
+        const ventana = new THREE.Mesh(
+          new THREE.BoxGeometry(0.65, 0.9, 0.08),
+          new THREE.MeshStandardMaterial({
+            color: 0x292b36,
+            emissive: 0x332b20
+          })
+        );
+
+        ventana.position.set(i, y, 2.54);
+        grupo.add(ventana);
+      }
+    }
+
+    grupo.position.set(x, 0, z);
+    scene.add(grupo);
+  }
+
+  for (let z = -35; z <= 35; z += 10) {
+    edificio(-7, z, 5, 9, 0xc5b6a0);
+    edificio(7, z, 5, 11, 0xb5a28e);
+  }
+
+  // PASO
+  const paso = new THREE.Group();
+  scene.add(paso);
+
+  // PLATAFORMA
+  function caja(parent, w, h, d, color, x, y, z) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({
+        color: color,
+        metalness: color === 0xc99a35 ? 0.65 : 0.1,
+        roughness: 0.55
+      })
+    );
+
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  }
+
+  caja(paso, 5.5, 0.35, 3.2, 0x452a22, 0, 1, 0);
+  caja(paso, 5.3, 0.12, 3, 0xc99a35, 0, 1.22, 0);
+  caja(paso, 5.1, 0.25, 2.8, 0x542a27, 0, 1.4, 0);
+
+  // RESPIRADEROS
+  for (let x = -2.35; x <= 2.36; x += 0.3) {
+    caja(paso, 0.06, 0.65, 0.08, 0xd5a83e, x, 1.45, 1.62);
+    caja(paso, 0.06, 0.65, 0.08, 0xd5a83e, x, 1.45, -1.62);
+  }
+
+  // VARALES Y COLUMNAS DEL PALIO
+  for (let x of [-2.15, -0.75, 0.75, 2.15]) {
+    for (let z of [-1.25, 1.25]) {
+
+      const columna = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.035, 0.045, 3.2, 12),
+        new THREE.MeshStandardMaterial({
+          color: 0xd9a83d,
+          metalness: 0.8,
+          roughness: 0.25
+        })
+      );
+
+      columna.position.set(x, 3.1, z);
+      paso.add(columna);
+    }
+  }
+
+  // TECHO DEL PALIO
+  caja(paso, 5.2, 0.18, 3, 0x8a292d, 0, 4.75, 0);
+  caja(paso, 5.35, 0.1, 3.15, 0xd3aa53, 0, 4.85, 0);
+
+  // BAMBALINAS
+  for (let x of [-2.15, 2.15]) {
+    caja(paso, 0.12, 0.9, 2.7, 0x7c2028, x, 4.2, 0);
+  }
+
+  for (let z of [-1.3, 1.3]) {
+    caja(paso, 4.3, 0.9, 0.12, 0x7c2028, 0, 4.2, z);
+  }
+
+  // CANDELERÍA
+  for (let x = -1.9; x <= 1.91; x += 0.55) {
+    for (let z of [-0.9, 0.9]) {
+
+      const vela = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.065, 1.1, 12),
+        new THREE.MeshStandardMaterial({ color: 0xf2e9d7 })
+      );
+
+      vela.position.set(x, 2.35, z);
+      paso.add(vela);
+
+      const llama = new THREE.Mesh(
+        new THREE.SphereGeometry(0.075, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xffb52e })
+      );
+
+      llama.position.set(x, 2.95, z);
+      paso.add(llama);
+    }
+  }
+
+  // FLORES
+  for (let i = 0; i < 100; i++) {
+    const flor = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: [0xffffff, 0xf3d8df, 0xe8a5b7][i % 3]
+      })
+    );
+
+    flor.position.set(
+      (Math.random() - 0.5) * 4.5,
+      1.85 + Math.random() * 0.3,
+      (Math.random() - 0.5) * 2.4
+    );
+
+    paso.add(flor);
+  }
+
+  // FIGURA PROVISIONAL DE LA VIRGEN
+  const virgen = new THREE.Group();
+  virgen.position.set(0, 0, 0);
+  paso.add(virgen);
+
+  const saya = new THREE.Mesh(
+    new THREE.ConeGeometry(0.8, 2.1, 24),
+    new THREE.MeshStandardMaterial({ color: 0x74232d })
+  );
+
+  saya.position.y = 2.75;
+  virgen.add(saya);
+
+  const manto = new THREE.Mesh(
+    new THREE.ConeGeometry(1.15, 2.5, 24),
+    new THREE.MeshStandardMaterial({ color: 0x17151a })
+  );
+
+  manto.position.set(0, 3, -0.2);
+  virgen.add(manto);
+
+  const cara = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 24, 24),
+    new THREE.MeshStandardMaterial({ color: 0xe8bda5 })
+  );
+
+  cara.position.set(0, 4.05, 0.35);
+  cara.scale.set(0.8, 1.15, 0.8);
+  virgen.add(cara);
+
+  const corona = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.35, 0.55, 16),
+    new THREE.MeshStandardMaterial({
+      color: 0xe0b33e,
+      metalness: 0.8
+    })
+  );
+
+  corona.position.set(0, 4.55, 0.35);
+  virgen.add(corona);
+
+  // POSICIÓN INICIAL
+  paso.position.set(0, 0, 0);
+
+  // MOVIMIENTO
+  const teclas = {};
+
+  window.addEventListener("keydown", function(e) {
+    teclas[e.key.toLowerCase()] = true;
+  });
+
+  window.addEventListener("keyup", function(e) {
+    teclas[e.key.toLowerCase()] = false;
+  });
+
+  function animar() {
+    requestAnimationFrame(animar);
+
+    if (teclas["w"]) paso.position.z -= 0.035;
+    if (teclas["s"]) paso.position.z += 0.035;
+    if (teclas["a"]) paso.rotation.y += 0.012;
+    if (teclas["d"]) paso.rotation.y -= 0.012;
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  animar();
+
+  estado.textContent = "Simulador cargado correctamente";
+
+  // ADAPTAR A LA PANTALLA
+  window.addEventListener("resize", function() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+} catch (error) {
+  document.getElementById("estado").textContent =
+    "ERROR AL CARGAR: " + error.message;
+
+  console.error(error);
+}
+</script>
+
+</body>
+</html>
