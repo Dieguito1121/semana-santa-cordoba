@@ -1,38 +1,53 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Semana Santa Simulator Córdoba</title>
+<title>Semana Santa Simulator · Buen Suceso</title>
 <style>
-body{margin:0;overflow:hidden;background:#101522;font-family:Arial;color:white}
-#ui{position:absolute;top:15px;left:15px;z-index:2;background:#101b2bdd;padding:15px;border:1px solid #c59b45;border-radius:12px}
-#ui h2{margin:0 0 8px;color:#e7c36c;font-size:19px}
-#ui p{font-size:13px;margin:5px 0}
-#help{position:absolute;bottom:15px;left:15px;background:#101b2ddd;padding:12px;border-radius:10px;font-size:13px}
-#loading{position:absolute;inset:0;display:grid;place-items:center;background:#101522;z-index:5}
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#101522;color:#f7f0df;font-family:Georgia,serif}
+#loading{position:fixed;inset:0;display:grid;place-items:center;background:#101522;color:#e8ca83;font:18px Arial;z-index:5}
+#panel,#help{position:fixed;z-index:2;background:#101522df;border:1px solid #a9874b;border-radius:10px;padding:12px 15px;box-shadow:0 6px 24px #0008}
+#panel{top:15px;left:15px}
+#panel h1{font:bold 16px Arial;letter-spacing:1px;color:#e8ca83;margin:0 0 7px}
+#panel p,#help{font:12px/1.55 Arial}
+#panel p{margin:3px 0}
+#status{color:#f0d18b}
+#help{bottom:15px;left:15px}
+b{color:#e8ca83}
 </style>
 </head>
 <body>
-<div id="loading">Preparando nuestra procesión...</div>
-<div id="ui">
-<h2>SEMANA SANTA CÓRDOBA</h2>
+<div id="loading">Preparando la procesión…</div>
+<div id="panel">
+<h1>SEMANA SANTA · CÓRDOBA</h1>
 <p>Hermandad del Buen Suceso</p>
 <p>María Santísima de la Caridad</p>
-<p id="status">Procesión preparada</p>
+<p id="status">Paso detenido</p>
 </div>
-<div id="help">W / S: avanzar y retroceder<br>A / D: girar el paso<br>ESPACIO: detenerse</div>
+<div id="help">
+<b>CÁMARA LIBRE 360°</b><br>
+Ratón: girar alrededor del paso<br>
+Rueda: acercar / alejar<br>
+Botón derecho: desplazar cámara<br>
+<b>MOVIMIENTO</b><br>
+W / S: avanzar / retroceder<br>
+A / D: girar el paso<br>
+ESPACIO: marcha / parada
+</div>
 
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x101827);
-scene.fog=new THREE.Fog(0x101827,35,100);
+scene.background=new THREE.Color(0x101522);
+scene.fog=new THREE.FogExp2(0x101522,.012);
 
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,200);
-camera.position.set(0,9,17);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,200);
+camera.position.set(8,7,11);
 
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
@@ -40,173 +55,323 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xabbcdd,0x493321,2));
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,2.1,0);
+controls.enableDamping=true;
+controls.dampingFactor=.06;
+controls.minDistance=4;
+controls.maxDistance=27;
+controls.maxPolarAngle=Math.PI*.49;
+controls.minPolarAngle=.12;
 
-const moon=new THREE.DirectionalLight(0xffdfad,3);
-moon.position.set(-8,15,8);
+scene.add(new THREE.HemisphereLight(0xc7d7f5,0x463020,2));
+
+const moon=new THREE.DirectionalLight(0xffdfb2,2.4);
+moon.position.set(-9,16,8);
 moon.castShadow=true;
+moon.shadow.mapSize.set(2048,2048);
 scene.add(moon);
 
-function material(color,metalness=0,roughness=.7){
-return new THREE.MeshStandardMaterial({color,metalness,roughness});
-}
-function box(parent,x,y,z,w,h,d,mat){
-const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
-m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;
-parent.add(m);return m;
-}
-function sphere(parent,x,y,z,r,mat){
-const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),mat);
-m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;
+const glow=new THREE.PointLight(0xffb95c,90,24,2);
+glow.position.set(0,5,2);
+scene.add(glow);
+
+function M(c,metal=0,rough=.7,extra={}){
+return new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough,...extra});
 }
 
-// Calle cordobesa
-const ground=box(scene,0,-.25,0,30,.5,100,material(0x827b6c));
-ground.receiveShadow=true;
+const gold=M(0xb88a36,.78,.27);
+const bright=M(0xe0bd68,.8,.22);
+const old=M(0x76501e,.7,.35);
+const velvet=M(0x21172d);
+const burgundy=M(0x641f35);
+const blue=M(0x182746);
+const ivory=M(0xe8ddc9);
+const skin=M(0xc99b80);
+const dark=M(0x17151a);
 
-const walls=material(0xd6b994);
-for(let z=-35;z<35;z+=12){
-box(scene,-12,3,z,5,6,10,walls);
-box(scene,12,3,z,5,6,10,walls);
-for(let side of [-1,1]){
-for(let y of [2,3.5]){
-box(scene,side*12,y,z,5.1,.18,10.1,material(0x9d7657));
-}
-}
-}
-
-// Puertas y ventanas
-for(let z=-35;z<35;z+=12){
-for(let side of [-1,1]){
-box(scene,side*9.43,1.3,z, .12,2.4,1.3,material(0x533c31));
-box(scene,side*9.43,3.8,z, .12,1.2,1.3,material(0x354b62));
-}
+function add(p,g,m,x=0,y=0,z=0){
+const o=new THREE.Mesh(g,m);
+o.position.set(x,y,z);
+o.castShadow=true;
+o.receiveShadow=true;
+p.add(o);
+return o;
 }
 
-// Farolas
-for(let z=-28;z<35;z+=14){
-for(let side of [-1,1]){
-const x=side*7;
-box(scene,x,2,z,.13,4,.13,material(0x292a30,.7));
-sphere(scene,x,4.1,z,.3,material(0xffd68a,.2));
+function box(p,x,y,z,w,h,d,m){
+return add(p,new THREE.BoxGeometry(w,h,d),m,x,y,z);
+}
+
+function ball(p,x,y,z,r,m,sx=1,sy=1,sz=1){
+let o=add(p,new THREE.SphereGeometry(r,16,12),m,x,y,z);
+o.scale.set(sx,sy,sz);
+return o;
+}
+
+function rod(p,a,b,r,m){
+let A=new THREE.Vector3(...a);
+let B=new THREE.Vector3(...b);
+let d=B.clone().sub(A);
+let o=add(p,new THREE.CylinderGeometry(r,r,d.length(),12),m);
+o.position.copy(A.add(B).multiplyScalar(.5));
+o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+return o;
+}
+
+function cyl(p,x,y,z,r1,r2,h,m,n=16){
+return add(p,new THREE.CylinderGeometry(r1,r2,h,n),m,x,y,z);
+}
+
+// CALLE Y FACHADAS CORDOBESAS
+box(scene,0,-.32,0,22,.55,110,M(0x4a4b4d));
+box(scene,-7.4,-.02,0,2.7,.16,110,M(0xc7b89d));
+box(scene,7.4,-.02,0,2.7,.16,110,M(0xc7b89d));
+
+for(let z=-48;z<52;z+=13){
+for(let s of [-1,1]){
+box(scene,s*11,3.7,z,5.4,7.4,12.4,M((z%2)?0xcdb995:0xb99c78));
+box(scene,s*11,7.45,z,5.55,.22,12.5,old);
+
+for(let zz of [-3.5,2.8]){
+box(scene,s*8.23,3.8,z+zz,.12,2.2,1.65,dark);
+box(scene,s*8.15,4.1,z+zz,.1,1.55,1.15,M(0x283d4b));
+box(scene,s*8.05,2.65,z+zz,.35,.12,2,gold);
+}
+
+box(scene,s*8,5.25,z,1.05,.12,3.4,old);
+
+for(let x=-1.4;x<=1.4;x+=.28){
+rod(scene,[s*7.85,5.25,z+x],[s*7.85,5.9,z+x],.022,dark);
+}
 }
 }
 
-// Paso procesional
+// FAROLES
+for(let z=-39;z<48;z+=15){
+for(let s of [-1,1]){
+let x=s*6.7;
+rod(scene,[x,2.4,z],[x,4.1,z],.05,dark);
+rod(scene,[x,4.05,z],[x-s*.45,4.35,z],.04,dark);
+ball(scene,x-s*.48,4.18,z,.22,M(0xffc66b,0,.25,{emissive:0xff9c32,emissiveIntensity:1}),.8,1.15,.8);
+}
+}
+
+// PASO PROCESIONAL
 const paso=new THREE.Group();
 scene.add(paso);
 paso.position.set(0,0,2);
 
-const gold=material(0xb58a36,.75,.3);
-const darkGold=material(0x76501c,.65,.35);
-const velvet=material(0x241c43);
-const silver=material(0xc9cbd0,.8,.2);
+box(paso,0,.62,0,5.4,.42,2.65,old);
+box(paso,0,.89,0,5.5,.13,2.72,bright);
+box(paso,0,.36,0,5.65,.18,2.82,velvet);
 
-// Parihuela y respiraderos
-box(paso,0,.65,0,5,.45,2.4,darkGold);
-box(paso,0,.92,0,5.1,.13,2.5,gold);
-box(paso,0,.4,0,5.3,.15,2.6,velvet);
-
-// Molduras
-for(let x of [-2.35,2.35]){
-box(paso,x,1.05,0,.15,.5,2.3,gold);
+// RESPIRADEROS
+for(let z of [-1.34,1.34]){
+box(paso,0,.68,z,4.95,.48,.08,gold);
+for(let x=-2.25;x<=2.25;x+=.32){
+ball(paso,x,.68,z,.07,bright,.7,1.3,.45);
 }
-for(let z of [-1.12,1.12]){
-box(paso,0,1.05,z,4.8,.5,.12,gold);
 }
 
-// Flores
-const flowerColors=[0xe9d7df,0xf5f0e9,0x9b284b,0xf2a6b8];
-for(let i=0;i<100;i++){
-const x=(Math.random()-.5)*4.5;
-const z=(Math.random()-.5)*1.9;
-const y=1.35+Math.random()*.22;
-sphere(paso,x,y,z,.09,material(flowerColors[i%4]));
+for(let x of [-2.7,2.7]){
+box(paso,x,.7,0,.09,.5,2.5,bright);
 }
 
-// Candelería
-for(let x=-1.9;x<=1.9;x+=.48){
+// CANDELERÍA
+for(let row=0;row<3;row++){
+for(let i=0;i<9;i++){
+let x=-1.95+i*.49;
+let z=-.75+row*.75;
+if(Math.abs(x)>2.05)continue;
+
+cyl(paso,x,1.2,z,.11,.16,.18,old);
+cyl(paso,x,1.75+row*.08,z,.035,.055,1.05-row*.12,ivory,12);
+ball(paso,x,2.31+row*.08,z,.055,M(0xffbd55,0,.25,{emissive:0xff8b24,emissiveIntensity:1.4}),.55,1.5,.55);
+}
+}
+
+// CANDELABROS
+for(let x of [-2.25,2.25]){
 for(let z of [-.8,.8]){
-box(paso,x,1.65,z,.045,.65,.045,gold);
-sphere(paso,x,2.02,z,.07,material(0xffd99a));
+cyl(paso,x,1.35,z,.18,.24,.22,old);
+rod(paso,[x,1.45,z],[x,2.8,z],.07,bright);
+
+for(let a=0;a<5;a++){
+let q=a*Math.PI*2/5;
+let ex=x+Math.cos(q)*.45;
+let ez=z+Math.sin(q)*.45;
+
+rod(paso,[x,2.35,z],[ex,2.75,ez],.035,gold);
+cyl(paso,ex,2.9,ez,.035,.05,.3,ivory,10);
+ball(paso,ex,3.08,ez,.06,M(0xffbd55,0,.25,{emissive:0xff8b24,emissiveIntensity:1.3}),.6,1.4,.6);
+}
 }
 }
 
-// Varales
-for(let x of [-2.1,-1.4,-.7,0,.7,1.4,2.1]){
-for(let z of [-1.05,1.05]){
-const pole=new THREE.Mesh(new THREE.CylinderGeometry(.035,.045,3.3,12),gold);
-pole.position.set(x,2.7,z);pole.castShadow=true;paso.add(pole);
+// FLORES
+const fms=[M(0xf0e7df),M(0xd9b7c4),M(0x9c294b),M(0xf3d7dc)];
+
+for(let i=0;i<150;i++){
+let x=(Math.random()-.5)*4.75;
+let z=(Math.random()-.5)*2;
+let y=1.32+Math.random()*.18;
+let m=fms[i%4];
+
+for(let j=0;j<5;j++){
+let a=j*Math.PI*2/5;
+ball(paso,x+Math.cos(a)*.075,y,z+Math.sin(a)*.075,.06,m,.8,.65,1);
+}
+
+ball(paso,x,y+.025,z,.035,bright);
+}
+
+// VARALES
+for(let x of [-2.35,-1.57,-.78,0,.78,1.57,2.35]){
+for(let z of [-1.18,1.18]){
+cyl(paso,x,2.82,z,.045,.055,3.45,bright);
+
+for(let y of [1.35,2.05,3.65,4.45]){
+let r=add(paso,new THREE.TorusGeometry(.075,.022,8,18),gold,x,y,z);
+r.rotation.x=Math.PI/2;
+}
 }
 }
 
-// Techo del palio
-box(paso,0,4.4,0,5.2,.16,2.7,velvet);
-box(paso,0,4.5,0,5.3,.08,2.8,gold);
+// TECHO Y BAMBALINAS
+box(paso,0,4.62,0,5.5,.18,2.85,velvet);
+box(paso,0,4.74,0,5.62,.07,2.95,bright);
 
-// Bambalinas
-for(let z of [-1.36,1.36]){
-box(paso,0,4,.0+z,5.3,.7,.12,velvet);
-for(let x=-2.4;x<=2.4;x+=.3){
-sphere(paso,x,3.6,z,.07,gold);
+for(let z of [-1.48,1.48]){
+box(paso,0,4.02,z,5.55,.64,.13,burgundy);
+box(paso,0,4.22,z,5.65,.13,.14,bright);
+
+for(let x=-2.65;x<=2.65;x+=.22){
+ball(paso,x,3.58,z,.045,bright,.8,1.5,.8);
+rod(paso,[x,3.82,z-.075],[x+.07,4.17,z-.075],.012,bright);
 }
 }
-for(let x of [-2.65,2.65]){
-box(paso,x,4,0,.12,.7,2.7,velvet);
+
+for(let x of [-2.82,2.82]){
+box(paso,x,4.02,0,.13,.65,2.85,burgundy);
+
+for(let z=-1.2;z<=1.2;z+=.22){
+ball(paso,x,3.56,z,.05,bright,.7,1.2,.7);
+}
 }
 
-// Representación provisional de la Virgen
-const statue=new THREE.Group();
-paso.add(statue);
-sphere(statue,0,2.4,0,.38,material(0xe1b99b));
-const mantle=new THREE.Mesh(
-new THREE.ConeGeometry(.9,1.5,5),
-material(0x263b72,.2,.5)
-);
-mantle.position.set(0,1.9,0);
-mantle.castShadow=true;statue.add(mantle);
-const crown=new THREE.Mesh(new THREE.ConeGeometry(.27,.45,12),gold);
-crown.position.set(0,2.86,0);statue.add(crown);
+// GLORIA DEL TECHO
+ball(paso,0,4.84,0,.36,bright,1.35,.18,.85);
 
-// Cruz ornamental trasera
-box(paso,0,3.1,-.5,.08,1.1,.08,gold);
-box(paso,0,3.35,-.5,.55,.08,.08,gold);
+for(let i=0;i<16;i++){
+let a=i*Math.PI/8;
+rod(paso,[Math.cos(a)*.25,4.86,Math.sin(a)*.25],[Math.cos(a)*.68,4.86,Math.sin(a)*.68],.018,gold);
+}
 
-// Cámara y controles
-let keys={};
-let moving=true;
-window.addEventListener('keydown',e=>{
+// VIRGEN: FIGURA PROVISIONAL ESTILIZADA
+const v=new THREE.Group();
+paso.add(v);
+v.position.z=.12;
+
+let saya=add(v,new THREE.ConeGeometry(.66,1.65,12),burgundy,0,2,0);
+saya.scale.z=.82;
+
+let manto=add(v,new THREE.ConeGeometry(1.02,1.72,12,1,true),blue,0,2.05,-.06);
+manto.scale.set(1.1,1,1);
+
+let back=add(v,new THREE.ConeGeometry(.92,1.7,12,1,true),dark,0,2.05,-.22);
+back.scale.set(1.08,1,.95);
+
+cyl(v,0,2.77,0,.17,.2,.34,skin);
+ball(v,0,3.08,.13,.27,skin,.82,1.12,.72);
+ball(v,0,3.32,.06,.28,dark,.9,.45,.75);
+
+let veil=add(v,new THREE.TorusGeometry(.31,.075,10,32),ivory,0,3.08,.16);
+veil.scale.set(.9,1.25,.65);
+
+for(let x of [-.105,.105]){
+ball(v,x,3.12,.355,.027,dark,.8,.55,.45);
+rod(v,[x-.045,3.18,.35],[x+.035,3.19,.35],.012,dark);
+}
+
+ball(v,0,3.04,.385,.035,skin,.65,1.2,.55);
+ball(v,0,2.965,.39,.025,M(0x8d4850),1.3,.5,.5);
+
+for(let x of [-.13,.13]){
+ball(v,x,3.06,.38,.018,M(0x91b7d0,.3,.2),.6,1.8,.6);
+}
+
+cyl(v,0,3.43,.12,.24,.28,.09,bright,24);
+
+for(let i=0;i<16;i++){
+let a=i*Math.PI*2/16;
+let x=Math.cos(a)*.3;
+let z=.12+Math.sin(a)*.12;
+
+rod(v,[x*.75,3.45,z],[x,3.83,z],.018,bright);
+ball(v,x,3.84,z,.035,M(0x8b2442,.4,.25),.8,.8,.8);
+}
+
+cyl(v,0,3.49,.12,.08,.12,.13,old);
+
+for(let x of [-.12,.12]){
+ball(v,x,2.48,.42,.095,skin,.65,1.5,.65);
+}
+
+rod(v,[-.1,2.49,.44],[.1,2.49,.44],.055,skin);
+
+for(let s of [-1,1]){
+for(let i=0;i<7;i++){
+let y=1.45+i*.16;
+let x=s*(.55-i*.035);
+rod(v,[s*.16,y,.53],[x,y+.12,.36],.012,bright);
+}
+}
+
+// ILUMINACIÓN DE LA IMAGEN
+const spot=new THREE.SpotLight(0xffdfb0,75,12,Math.PI/4,.55,1.2);
+spot.position.set(0,7,4);
+spot.target.position.set(0,2.7,0);
+paso.add(spot,spot.target);
+
+// CONTROLES
+let moving=false;
+const keys={};
+
+addEventListener('keydown',e=>{
+if(e.code==='Space'){
+e.preventDefault();
+moving=!moving;
+document.querySelector('#status').textContent=moving?'Procesión en marcha':'Paso detenido';
+}
 keys[e.key.toLowerCase()]=true;
-if(e.code==='Space')moving=!moving;
 });
-window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+addEventListener('blur',()=>Object.keys(keys).forEach(k=>keys[k]=false));
 
 function animate(){
 requestAnimationFrame(animate);
+
 if(moving){
-if(keys.w)paso.position.z-=.045;
-if(keys.s)paso.position.z+=.045;
+if(keys.w)paso.position.z-=.055;
+if(keys.s)paso.position.z+=.055;
 if(keys.a)paso.rotation.y+=.012;
 if(keys.d)paso.rotation.y-=.012;
 }
-const target=new THREE.Vector3(
-paso.position.x,2.1,paso.position.z
-);
-const desired=new THREE.Vector3(
-paso.position.x,8,paso.position.z+12
-);
-camera.position.lerp(desired,.04);
-camera.lookAt(target);
+
+controls.target.lerp(new THREE.Vector3(paso.position.x,2.25,paso.position.z),.035);
+controls.update();
 renderer.render(scene,camera);
-document.getElementById('status').textContent=
-moving?'Procesión en marcha':'Paso detenido';
 }
-document.getElementById('loading').remove();
+
+document.querySelector('#loading').remove();
 animate();
 
-window.addEventListener('resize',()=>{
+addEventListener('resize',()=>{
 camera.aspect=innerWidth/innerHeight;
 camera.updateProjectionMatrix();
 renderer.setSize(innerWidth,innerHeight);
